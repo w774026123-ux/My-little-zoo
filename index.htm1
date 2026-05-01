@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>حديقتي الصغيرة - مع زر النسخ</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0;
+            background: #c8e6c9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            max-width: 600px;
+            width: 100%;
+            background: #f1f8e9;
+            border-radius: 40px;
+            box-shadow: 0 20px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            padding: 20px;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #2e7d32;
+            padding: 12px 20px;
+            border-radius: 60px;
+            color: white;
+            margin-bottom: 20px;
+            font-weight: bold;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.2);
+            padding: 5px 12px;
+            border-radius: 40px;
+        }
+        .copy-btn {
+            background: #ffb74d;
+            border: none;
+            color: #2e7d32;
+            font-size: 22px;
+            padding: 5px 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+        .animals-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .animal-card {
+            background: white;
+            border-radius: 30px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 8px 12px rgba(0,0,0,0.1);
+        }
+        .animal-emoji {
+            font-size: 60px;
+        }
+        .animal-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 20px;
+            height: 8px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 50%;
+            border-radius: 20px;
+        }
+        .actions {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 12px;
+        }
+        .action-btn {
+            font-size: 28px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 50px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .action-btn:active {
+            transform: scale(0.9);
+        }
+        .feed { background:#c8e6c9; }
+        .clean { background:#bbdefb; }
+        .heal { background:#ffcdd2; }
+        .message {
+            background: #fff3e0;
+            border-radius: 30px;
+            padding: 10px;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        @media (max-width: 450px) {
+            .animal-emoji { font-size: 45px; }
+            .action-btn { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="stats">
+        <div class="stat">💎 <span id="gems">10</span></div>
+        <div class="stat">⭐ <span id="points">0</span></div>
+        <div class="stat">🏆 المستوى <span id="level">1</span></div>
+        <button class="copy-btn" id="copyLinkBtn">🔗 نسخ الرابط</button>
+    </div>
+    <div class="animals-grid" id="animalsGrid"></div>
+    <div class="message" id="message">👋 اضغط على الأزرار لإطعام وتنظيف الحيوانات!</div>
+</div>
+
+<script>
+    const animals = [
+        { id: 0, name: "أرنب", emoji: "🐇", hunger: 70, dirt: 30, health: 100 },
+        { id: 1, name: "بقرة", emoji: "🐄", hunger: 40, dirt: 50, health: 80 },
+        { id: 2, name: "دجاجة", emoji: "🐔", hunger: 20, dirt: 20, health: 100 },
+        { id: 3, name: "خروف", emoji: "🐑", hunger: 60, dirt: 40, health: 90 }
+    ];
+    let gems = 10;
+    let points = 0;
+    let level = 1;
+
+    function updateUI() {
+        document.getElementById('gems').innerText = gems;
+        document.getElementById('points').innerText = points;
+        document.getElementById('level').innerText = level;
+        renderAnimals();
+    }
+
+    function showMessage(msg, isGood = true) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.innerHTML = msg;
+        msgDiv.style.backgroundColor = isGood ? '#dcedc8' : '#ffccbc';
+        setTimeout(() => {
+            msgDiv.style.backgroundColor = '#fff3e0';
+        }, 1500);
+    }
+
+    function checkLevelUp() {
+        let newLevel = Math.floor(points / 100) + 1;
+        if (newLevel > level) {
+            level = newLevel;
+            showMessage(`🎉 رائع! وصلت للمستوى ${level}. حيوان جديد قريباً!`, true);
+        }
+    }
+
+    function modifyAttribute(animal, attr, delta, rewardGems, rewardPoints, successMsg) {
+        if (attr === 'hunger') animal.hunger = Math.min(100, Math.max(0, animal.hunger + delta));
+        if (attr === 'dirt') animal.dirt = Math.min(100, Math.max(0, animal.dirt + delta));
+        if (attr === 'health') animal.health = Math.min(100, Math.max(0, animal.health + delta));
+        gems += rewardGems;
+        points += rewardPoints;
+        checkLevelUp();
+        updateUI();
+        showMessage(successMsg, true);
+    }
+
+    function feed(animal) {
+        if (animal.hunger <= 0) {
+            showMessage(`${animal.name} ليس جائعاً الآن!`, false);
+            return;
+        }
+        modifyAttribute(animal, 'hunger', -30, 1, 5, `🍎 أطعمت ${animal.name}!`);
+    }
+
+    function clean(animal) {
+        if (animal.dirt <= 0) {
+            showMessage(`${animal.name} نظيف بالفعل!`, false);
+            return;
+        }
+        modifyAttribute(animal, 'dirt', -40, 1, 3, `🧼 نظفت ${animal.name}!`);
+    }
+
+    function heal(animal) {
+        if (animal.health >= 100) {
+            showMessage(`${animal.name} بصحة جيدة!`, false);
+            return;
+        }
+        animal.health = 100;
+        gems += 2;
+        points += 10;
+        checkLevelUp();
+        updateUI();
+        showMessage(`💊 شفيت ${animal.name} تماماً!`, true);
+    }
+
+    function renderAnimals() {
+        const grid = document.getElementById('animalsGrid');
+        grid.innerHTML = '';
+        animals.forEach(animal => {
+            const card = document.createElement('div');
+            card.className = 'animal-card';
+            const hungerPercent = (100 - animal.hunger) / 100;
+            const dirtPercent = (100 - animal.dirt) / 100;
+            const healthPercent = animal.health / 100;
+            card.innerHTML = `
+                <div class="animal-emoji">${animal.emoji}</div>
+                <div class="animal-name">${animal.name}</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: ${hungerPercent*100}%; background:#ffb74d;"></div></div>
+                <div class="progress-bar"><div class="progress-fill" style="width: ${dirtPercent*100}%; background:#64b5f6;"></div></div>
+                <div class="progress-bar"><div class="progress-fill" style="width: ${healthPercent*100}%; background:#ef5350;"></div></div>
+                <div class="actions">
+                    <button class="action-btn feed" onclick="feed(animals[${animal.id}])">🍎</button>
+                    <button class="action-btn clean" onclick="clean(animals[${animal.id}])">🧼</button>
+                    <button class="action-btn heal" onclick="heal(animals[${animal.id}])">💊</button>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // زر نسخ الرابط
+    document.getElementById('copyLinkBtn')?.addEventListener('click', function() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(() => {
+            showMessage('✅ تم نسخ رابط اللعبة بنجاح! شاركه مع أصدقائك.', true);
+        }).catch(() => {
+            showMessage('❌ فشل النسخ، يمكنك نسخ الرابط يدوياً من شريط العنوان.', false);
+        });
+    });
+
+    renderAnimals();
+    updateUI();
+</script>
+</body>
+</html>
